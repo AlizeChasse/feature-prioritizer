@@ -1,15 +1,21 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, render_template_string
 from anthropic import Anthropic
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
 
-app = Flask(__name__, static_files={'static': '.'})
+app = Flask(__name__)
 client = Anthropic()
 
 features = []
 next_id = 1
+
+@app.route('/')
+def index():
+    with open(os.path.join(os.path.dirname(__file__), 'index.html'), 'r') as f:
+        html = f.read()
+    return render_template_string(html)
 
 @app.route('/features', methods=['GET'])
 def get_features():
@@ -45,7 +51,7 @@ def analyze():
     list_str = '\n'.join([f"- {f['name']} (impact {f['impact']}/5, effort {f['effort']}/5, score {f['score']})" for f in features])
     
     message = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-opus-4-5-20251101",
         max_tokens=1024,
         messages=[{
             "role": "user",
@@ -55,9 +61,6 @@ def analyze():
     
     return jsonify({'recommendation': message.content[0].text})
 
-@app.route('/')
-def index():
-    return app.send_static_file('index.html')
-
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5001)
+    

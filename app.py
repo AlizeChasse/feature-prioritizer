@@ -15,7 +15,12 @@ next_id = 1
 def index():
     with open(os.path.join(os.path.dirname(__file__), 'index.html'), 'r') as f:
         html = f.read()
-    return render_template_string(html)
+    response = render_template_string(html)
+    return response, 200, {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+    }
 
 @app.route('/features', methods=['GET'])
 def get_features():

@@ -2,7 +2,7 @@
 
 Un outil de priorisation de features basé sur un score impact/effort, avec recommandation IA.
 
-Construit en 2-3h pour démontrer une capacité à livrer un produit fonctionnel end-to-end.
+Construit en 3h pour démontrer une capacité à livrer un produit fonctionnel end-to-end.
 
 ## Stack technique
 

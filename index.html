@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Feature Prioritizer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #f5f5f5; padding: 2rem; color: #222; }
+    h1 { font-size: 20px; font-weight: 500; margin-bottom: 1.5rem; }
+    .form { background: white; border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem; border: 1px solid #e5e5e5; }
+    .form input, .form select { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; margin-bottom: 10px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    button { width: 100%; padding: 9px; background: #222; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; }
+    button:hover { background: #444; }
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; border: 1px solid #e5e5e5; }
+    th { text-align: left; font-size: 11px; color: #888; padding: 10px 12px; border-bottom: 1px solid #e5e5e5; }
+    td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #f0f0f0; }
+    tr:last-child td { border-bottom: none; }
+    .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 500; }
+    .high { background: #E1F5EE; color: #0F6E56; }
+    .mid  { background: #FAEEDA; color: #633806; }
+    .low  { background: #FCEBEB; color: #791F1F; }
+    .del { background: none; border: none; color: #aaa; cursor: pointer; width: auto; font-size: 16px; }
+    .del:hover { color: #e24b4a; }
+    .ai-box { background: white; border-radius: 8px; padding: 1.25rem; margin-top: 1.5rem; border: 1px solid #e5e5e5; font-size: 13px; color: #444; line-height: 1.6; display: none; }
+    .ai-btn { background: #3C3489; margin-top: 1rem; }
+    .ai-btn:hover { background: #534AB7; }
+  </style>
+</head>
+<body>
+  <h1>Feature Prioritizer</h1>
+
+  <div class="form">
+    <input type="text" id="name" placeholder="Nom de la feature" />
+    <div class="form-row">
+      <select id="impact">
+        <option value="1">Impact 1 — Très faible</option>
+        <option value="2">Impact 2 — Faible</option>
+        <option value="3" selected>Impact 3 — Moyen</option>
+        <option value="4">Impact 4 — Fort</option>
+        <option value="5">Impact 5 — Critique</option>
+      </select>
+      <select id="effort">
+        <option value="1">Effort 1 — Très léger</option>
+        <option value="2">Effort 2 — Léger</option>
+        <option value="3" selected>Effort 3 — Moyen</option>
+        <option value="4">Effort 4 — Lourd</option>
+        <option value="5">Effort 5 — Très lourd</option>
+      </select>
+    </div>
+    <button onclick="addFeature()">+ Ajouter la feature</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Feature</th>
+        <th>Impact</th>
+        <th>Effort</th>
+        <th>Score</th>
+        <th>Quadrant</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+
+  <button class="ai-btn" onclick="analyze()">Analyser avec l'IA</button>
+  <div class="ai-box" id="ai-box"></div>
+
+  <script>
+    let features = [];
+
+    function quadrant(impact, effort) {
+      if (impact >= 3 && effort <= 3) return "Quick win";
+      if (impact >= 3 && effort > 3)  return "Planifier";
+      if (impact < 3  && effort <= 3) return "Fill-in";
+      return "À éviter";
+    }
+
+    function scoreCls(s) {
+      if (s >= 1.5) return "high";
+      if (s >= 0.8) return "mid";
+      return "low";
+    }
+
+    async function addFeature() {
+      const name   = document.getElementById('name').value.trim();
+      const impact = parseInt(document.getElementById('impact').value);
+      const effort = parseInt(document.getElementById('effort').value);
+      if (!name) return;
+
+      const res  = await fetch('/features', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, impact, effort })
+      });
+      const feat = await res.json();
+      features.push(feat);
+      document.getElementById('name').value = '';
+      render();
+    }
+
+    async function remove(id) {
+      await fetch(`/features/${id}`, { method: 'DELETE' });
+      features = features.filter(f => f.id !== id);
+      render();
+    }
+
+    async function analyze() {
+      const box = document.getElementById('ai-box');
+      box.style.display = 'block';
+      box.textContent = 'Analyse en cours…';
+      const res  = await fetch('/analyze', { method: 'POST' });
+      const data = await res.json();
+      box.textContent = data.recommendation || data.error;
+    }
+
+    function render() {
+      const sorted = [...features].sort((a, b) => b.score - a.score);
+      document.getElementById('tbody').innerHTML = sorted.map(f => `
+        <tr>
+          <td style="font-weight:500">${f.name}</td>
+          <td>${f.impact}/5</td>
+          <td>${f.effort}/5</td>
+          <td><span class="badge ${scoreCls(f.score)}">${f.score}</span></td>
+          <td>${quadrant(f.impact, f.effort)}</td>
+          <td><button class="del" onclick="remove(${f.id})">✕</button></td>
+        </tr>
+      `).join('');
+    }
+  </script>
+</body>
+</html>
